@@ -1,5 +1,7 @@
 # AzurLaneSpinePaintingViewer
 
+#2023.1.11更新后的素材包不可用，先鸽着
+
 因为碧蓝动态立绘一般都由多层骨骼组成，Skeleton Viewer不能直接查看所以写了这个东西
 
 ### 用法：
