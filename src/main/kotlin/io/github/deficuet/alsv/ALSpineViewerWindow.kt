@@ -29,6 +29,7 @@ class ALSpineViewerWindow(
     private lateinit var batch: PolygonSpriteBatch
     private lateinit var renderer: SkeletonRenderer
     private lateinit var debugRenderer: SkeletonRendererDebug
+    lateinit var mainAnimState: AnimationState
     lateinit var camera: OrthographicCamera
 
     val infoList = mutableListOf<SkeletonAtlasFilesPair>()
@@ -91,24 +92,37 @@ class ALSpineViewerWindow(
 
     fun loadSkeleton() {
         animGroupList.clear()
-        infoList.forEach {
+        infoList.forEach { pair ->
             val atlas = TextureAtlas(
-                TextureAtlas.TextureAtlasData(it.atlasFile, it.atlasFile.parent(), false)
+                TextureAtlas.TextureAtlasData(pair.atlasFile, pair.atlasFile.parent(), false)
             )
             val skd = SkeletonBinary(atlas).apply {
                 scale = ui.scaleSlider.value.toFloat()
-            }.readSkeletonData(it.skeletonFile)
+            }.readSkeletonData(pair.skeletonFile)
+            val anim = skd.animations
+            val animState = AnimationState(AnimationStateData(skd)).apply {
+                data.defaultMix = pair.defaultMix
+                setAnimation(
+                    0, skd.findAnimation(pair.startingAnimName),
+                    ui.loopCheckbox.isSelected
+                )
+                setAnimation(
+                    1, skd.findAnimation(pair.startingAnimName),
+                    ui.loopCheckbox.isSelected
+                )
+            }
+            if (anim.size > 1) {
+                Platform.runLater {
+                    ui.faceList.clear()
+                    ui.faceList.addAll(anim.map { it.name })
+                    ui.faceListView.selectionModel.select(pair.startingAnimName)
+                }
+                mainAnimState = animState
+            }
             animGroupList.add(
                 SkeletonAnimationGroup(
-                    Skeleton(skd), atlas,
-                    AnimationState(AnimationStateData(skd)).apply {
-                        data.defaultMix = it.defaultMix
-                        setAnimation(
-                            0, skd.findAnimation(it.startingAnimName),
-                            ui.loopCheckbox.isSelected
-                        )
-                    },
-                    skd.findAnimation(it.startingAnimName)
+                    Skeleton(skd), atlas, animState,
+                    skd.findAnimation(pair.startingAnimName)
                 )
             )
         }

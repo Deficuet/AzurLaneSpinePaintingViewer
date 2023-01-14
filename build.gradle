@@ -18,7 +18,7 @@ repositories {
 shadowJar {
     archiveBaseName.set("ALSV")
     archiveClassifier.set("")
-    archiveVersion.set("0.0.1")
+    archiveVersion.set("0.0.2")
     zip64 = true
 }
 

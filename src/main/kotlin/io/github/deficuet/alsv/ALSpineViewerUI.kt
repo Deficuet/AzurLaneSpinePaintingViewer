@@ -7,14 +7,17 @@ import javafx.stage.Stage
 import javafx.beans.property.SimpleStringProperty
 import javafx.event.Event
 import javafx.event.EventHandler
+import javafx.event.EventTarget
 import javafx.geometry.Orientation
 import javafx.geometry.Pos
 import javafx.scene.Node
-import javafx.scene.control.Slider
+import javafx.scene.control.*
 import javafx.scene.input.KeyEvent
+import javafx.scene.control.skin.TableColumnHeader
+import javafx.scene.input.InputEvent
+import javafx.scene.input.MouseEvent
 import tornadofx.*
 import java.awt.Toolkit
-import javafx.scene.control.CheckBox
 
 class ALSpineViewerApp: App(ALSpineViewerUI::class) {
     override fun start(stage: Stage) {
@@ -49,7 +52,7 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
     }
     private val uiScale by lazy { if (dpi >= 2f) 2 else 1 }
 
-    val window = ALSpineViewerWindow(this@ALSpineViewerUI, uiScale)
+    val window = ALSpineViewerWindow(this, uiScale)
     val windowApp = LwjglApplication(
         window,
         LwjglApplicationConfiguration().apply {
@@ -61,13 +64,15 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
     )
 
     private val functions = BackendFunctions(this)
+    val faceList = observableListOf<String>()
 
-    val paintingNameLabel = SimpleStringProperty("当前任务：空闲中")
+    val taskNameStr = SimpleStringProperty("当前任务：空闲中")
     private val scaleLabel = SimpleStringProperty("1.00")
     private val zoomLabel = SimpleStringProperty("1.00")
     private val speedLabel = SimpleStringProperty("1.00")
     val controls = mutableListOf<Node>()
 
+    var taskNameLabel: Label by singleAssign()
     var scaleSlider: Slider by singleAssign()
     var zoomSlider: Slider by singleAssign()
     var speedSlider: Slider by singleAssign()
@@ -75,6 +80,9 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
     var flipYCheckbox: CheckBox by singleAssign()
     var loopCheckbox: CheckBox by singleAssign()
     var drawAxisCheckbox: CheckBox by singleAssign()
+    var faceListView: ListView<String> by singleAssign()
+    var lastSelection = ""
+    private var keepOnTopCheckbox: CheckBox by singleAssign()
 
     override val root = vbox {
         hbox {
@@ -86,16 +94,20 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
                 minWidth = 80.0; minHeight = 30.0
                 action {
                     isDisable = true
+                    primaryStage.isAlwaysOnTop = false
                     val f = functions.importFile()
+                    primaryStage.isAlwaysOnTop = keepOnTopCheckbox.isSelected
                     if (f != null) {
                         runAsync {
                             functions.extractFile(f)
                             isDisable = false
                         }
+                    } else {
+                        isDisable = false
                     }
                 }
             }
-            label(paintingNameLabel) {
+            taskNameLabel = label(taskNameStr) {
                 hboxConstraints {
                     marginLeft = 12.0
                 }
@@ -214,12 +226,12 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
         hbox {
             alignment = Pos.CENTER_LEFT
             vboxConstraints {
-                marginTop = 12.0; marginLeft = 16.0; marginBottom = 16.0
+                marginTop = 12.0; marginLeft = 16.0
             }
             label("其他设置：")
             vbox {
                 hbox {
-                    checkbox("窗口置顶") {
+                    keepOnTopCheckbox = checkbox("窗口置顶") {
                         action {
                             primaryStage.isAlwaysOnTop = isSelected
                         }
@@ -247,5 +259,61 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
             }
             isDisable = true
         }.also { controls.add(it) }
+        separator {
+            vboxConstraints { marginTop = 12.0; marginLeft = 16.0; marginRight = 16.0 }
+        }
+        hbox {
+            vboxConstraints {
+                marginTop = 12.0; marginLeft = 16.0
+                marginRight = 16.0; marginBottom = 16.0
+            }
+            label("差分：")
+            faceListView = listview(faceList) {
+                hboxConstraints { marginLeft = 16.0; marginRight = 0.0 }
+                maxHeight = 144.0; maxWidth = 216.0
+                onUserSelectModified(clickCount = 1) { item ->
+                    if (item != lastSelection) {
+                        windowApp.postRunnable {
+                            with(window.mainAnimState) {
+                                setAnimation(1, item, loopCheckbox.isSelected)
+                            }
+                        }
+                        lastSelection = item
+                    }
+                }
+                addEventFilter(KeyEvent.KEY_PRESSED) { it.consume() }
+            }
+            isDisable = true
+        }.also { controls.add(it) }
     }
+}
+
+/**
+ * Modified [tornadofx.isInsideRow]
+ */
+fun EventTarget.isValidRowModified(): Boolean {
+    return when {
+        this !is Node -> false
+        this is TableColumnHeader -> false
+        this is TableRow<*> -> !this.isEmpty
+        this is TableView<*> || this is TreeTableRow<*>
+                || this is TreeTableView<*> || this is ListCell<*> -> true
+        this.parent != null -> this.parent.isValidRowModified()
+        else -> false
+    }
+}
+
+/**
+ * Modified [tornadofx.onUserSelect]
+ */
+fun <T> ListView<T>.onUserSelectModified(clickCount: Int, action: (T) -> Unit) {
+    val isSelected = { event: InputEvent ->
+        event.target.isValidRowModified() && !selectionModel.isEmpty
+    }
+    addEventFilter(MouseEvent.MOUSE_CLICKED) { event ->
+        if (event.clickCount == clickCount && isSelected(event)) {
+            action(selectedItem!!)
+        }
+    }
+    addEventFilter(KeyEvent.KEY_PRESSED) { it.consume() }
 }
