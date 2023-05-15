@@ -45,7 +45,7 @@ class BackendFunctions(private val ui: ALSpineViewerUI) {
             val folderPath = "$cachePath/${file.nameWithoutExtension}".also {
                 File(it).apply { mkdir() }
             }
-            context.objects.firstObjectOf<AssetBundle>()
+            context.objectList.firstObjectOf<AssetBundle>()
                 .mContainer[0].second.asset.getObjAs<GameObject>()
                 .mComponents.firstObjectOf<MonoBehaviour>()
                 .typeTreeJson!!.getJSONArray("prefabItem").map { item ->
@@ -82,7 +82,8 @@ class BackendFunctions(private val ui: ALSpineViewerUI) {
                         FileHandle(skeletonFile), FileHandle(atlasFile),
                         graphicJson.getString("startingAnimation"),
                         skeletonJson.getFloat("defaultMix"),
-                        itemGameObj.mComponents.firstObjectOf<Canvas>().mSortingOrder
+                        itemGameObj.mComponents.allObjectsOf<Canvas>()
+                            .firstOrNull()?.mSortingOrder ?: 0
                     )
                 }.sortedBy { it.sortingOrder }
         }

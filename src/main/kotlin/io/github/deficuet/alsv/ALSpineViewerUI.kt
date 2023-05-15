@@ -41,7 +41,7 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
     init {
         LwjglApplicationConfiguration.disableAudio = true
     }
-    private val dpi by lazy {
+    private val dpi = run {
         val os = System.getProperty("os.name")
         if ("Windows" in os) {
             Toolkit.getDefaultToolkit().screenResolution / 96f
@@ -50,7 +50,7 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
             if (o is Float && o.toInt() > 2) 2f else 1f
         } else 1f
     }
-    private val uiScale by lazy { if (dpi >= 2f) 2 else 1 }
+    private val uiScale = if (dpi >= 2f) 2 else 1
 
     val window = ALSpineViewerWindow(this, uiScale)
     val windowApp = LwjglApplication(
@@ -316,4 +316,8 @@ fun <T> ListView<T>.onUserSelectModified(clickCount: Int, action: (T) -> Unit) {
         }
     }
     addEventFilter(KeyEvent.KEY_PRESSED) { it.consume() }
+}
+
+fun main() {
+    launch<ALSpineViewerApp>()
 }

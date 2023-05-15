@@ -93,9 +93,9 @@ class ALSpineViewerWindow(
     fun loadSkeleton() {
         animGroupList.clear()
         infoList.forEach { pair ->
-            val atlas = TextureAtlas(
-                TextureAtlas.TextureAtlasData(pair.atlasFile, pair.atlasFile.parent(), false)
-            )
+            val tad = TextureAtlas.TextureAtlasData(pair.atlasFile, pair.atlasFile.parent(), false)
+            for (p in tad.pages) { p.pma = true }
+            val atlas = TextureAtlas(tad)
             val skd = SkeletonBinary(atlas).apply {
                 scale = ui.scaleSlider.value.toFloat()
             }.readSkeletonData(pair.skeletonFile)
@@ -132,7 +132,7 @@ class ALSpineViewerWindow(
         Gdx.gl.glClearColor(0.56f, 0.56f, 0.56f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
         val delta = minOf(
-            Gdx.graphics.deltaTime, 0.032f
+            Gdx.graphics.deltaTime, 0.033f
         ) * ui.speedSlider.value.toFloat()
         camera.update()
         batch.projectionMatrix.set(camera.combined)
