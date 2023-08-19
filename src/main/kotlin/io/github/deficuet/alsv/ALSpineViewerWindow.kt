@@ -15,7 +15,6 @@ import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.esotericsoftware.spine.*
-import io.github.deficuet.tools.file.deleteDirectory
 import io.github.deficuet.unitykt.cast
 import javafx.application.Platform
 import net.mamoe.yamlkt.Yaml
@@ -148,7 +147,6 @@ class ALSpineViewerWindow(
         }
         animGroupList.forEach {
             val sk = it.skeleton; val state = it.state
-            sk.setFlip(ui.flipXCheckbox.isSelected, ui.flipYCheckbox.isSelected)
             sk.update(delta)
             state.apply {
                 update(delta)

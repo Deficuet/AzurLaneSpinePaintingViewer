@@ -8,6 +8,11 @@ import com.esotericsoftware.spine.Skeleton
 import kotlinx.serialization.Serializable
 import net.mamoe.yamlkt.Yaml
 import java.io.File
+import java.nio.file.Files
+import kotlin.io.path.Path
+import kotlin.io.path.deleteExisting
+import kotlin.io.path.isDirectory
+import kotlin.io.path.isRegularFile
 
 data class SkeletonAtlasFilesPair(
     val skeletonFile: FileHandle,
@@ -47,4 +52,17 @@ val configs = if (configFile.exists()) {
         Yaml.encodeToString(Configurations.serializer(), defaultConfig)
     )
     defaultConfig
+}
+
+fun deleteDirectory(pathString: String) {
+    val path = Path(pathString)
+    Files.newDirectoryStream(path).use { stream ->
+        stream.forEach {
+            when {
+                it.isDirectory() -> deleteDirectory(it.toString())
+                it.isRegularFile() -> it.deleteExisting()
+            }
+        }
+    }
+    path.deleteExisting()
 }

@@ -8,7 +8,7 @@ import tornadofx.*
 import org.json.JSONObject
 import io.github.deficuet.unitykt.*
 import io.github.deficuet.unitykt.data.*
-import io.github.deficuet.tools.image.flipY
+import io.github.deficuet.jimage.flipY
 import javafx.application.Platform
 import javafx.scene.paint.Color
 
@@ -49,28 +49,28 @@ class BackendFunctions(private val ui: ALSpineViewerUI) {
                 .mContainer[0].second.asset.getObjAs<GameObject>()
                 .mComponents.firstObjectOf<MonoBehaviour>()
                 .typeTreeJson!!.getJSONArray("prefabItem").map { item ->
-                    val itemGameObj = manager.objects.objectFromPathID<GameObject>(
+                    val itemGameObj = manager.objectList.findWithPathID<GameObject>(
                         item.cast<JSONObject>().getLong("m_PathID")
                     )
                     val graphicJson = itemGameObj.mComponents.firstObjectOf<MonoBehaviour>().typeTreeJson!!
-                    val tex = manager.objects.objectFromPathID<Material>(
+                    val tex = manager.objectList.findWithPathID<Material>(
                         graphicJson.getJSONObject("m_Material").getLong("m_PathID")
                     ).mSavedProperties.mTexEnvs[0].second.mTexture.getObjAs<Texture2D>()
                     ImageIO.write(
                         tex.image.flipY(), "png",
                         File("$folderPath/${tex.mName}.png")
                     )
-                    val skeletonJson = manager.objects.objectFromPathID<MonoBehaviour>(
+                    val skeletonJson = manager.objectList.findWithPathID<MonoBehaviour>(
                         graphicJson.getJSONObject("skeletonDataAsset").getLong("m_PathID")
                     ).typeTreeJson!!
-                    val skeletonBinary = manager.objects.objectFromPathID<TextAsset>(
+                    val skeletonBinary = manager.objectList.findWithPathID<TextAsset>(
                         skeletonJson.getJSONObject("skeletonJSON").getLong("m_PathID")
                     )
                     val skeletonFile = File("$folderPath/${skeletonBinary.mName}").apply {
                         writeBytes(skeletonBinary.mScript)
                     }
-                    val atlasBinary = manager.objects.objectFromPathID<TextAsset>(
-                        manager.objects.objectFromPathID<MonoBehaviour>(
+                    val atlasBinary = manager.objectList.findWithPathID<TextAsset>(
+                        manager.objectList.findWithPathID<MonoBehaviour>(
                             skeletonJson.getJSONArray("atlasAssets")[0]
                                 .cast<JSONObject>().getLong("m_PathID")
                         ).typeTreeJson!!.getJSONObject("atlasFile").getLong("m_PathID")

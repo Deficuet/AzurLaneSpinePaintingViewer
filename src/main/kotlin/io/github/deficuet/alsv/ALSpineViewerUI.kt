@@ -76,8 +76,6 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
     var scaleSlider: Slider by singleAssign()
     var zoomSlider: Slider by singleAssign()
     var speedSlider: Slider by singleAssign()
-    var flipXCheckbox: CheckBox by singleAssign()
-    var flipYCheckbox: CheckBox by singleAssign()
     var loopCheckbox: CheckBox by singleAssign()
     var drawAxisCheckbox: CheckBox by singleAssign()
     var faceListView: ListView<String> by singleAssign()
@@ -189,17 +187,6 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
             button("重置") {
                 hboxConstraints { marginLeft = 8.0 }
                 action { speedSlider.value = 1.0 }
-            }
-            isDisable = true
-        }.also { controls.add(it) }
-        hbox {
-            vboxConstraints {
-                marginLeft = 16.0; marginTop = 12.0
-            }
-            label("翻转：")
-            flipXCheckbox = checkbox("沿X轴")
-            flipYCheckbox = checkbox("沿Y轴") {
-                hboxConstraints { marginLeft = 16.0 }
             }
             isDisable = true
         }.also { controls.add(it) }

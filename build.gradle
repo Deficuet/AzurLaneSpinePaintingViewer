@@ -7,18 +7,23 @@ plugins {
 }
 
 group = 'io.github.deficuet'
-version = '0.0.3'
+version = '0.0.4'
 mainClassName = "io.github.deficuet.alsv.ALSpineViewerApp"
 
 repositories {
+    maven { url "https://www.brockmann-consult.de/mvn/os/" }
     mavenCentral()
-    maven { url "https://jitpack.io" }
+    maven { url 'https://jitpack.io' }
+    maven {
+        url "http://maven.geo-solutions.it/"
+        allowInsecureProtocol = true
+    }
 }
 
 shadowJar {
     archiveBaseName.set("ALSV")
     archiveClassifier.set("")
-    archiveVersion.set("0.0.3")
+    archiveVersion.set("0.0.4")
     zip64 = true
 }
 
@@ -28,10 +33,8 @@ javafx {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib"
-    implementation "org.jetbrains.kotlin:kotlin-gradle-plugin"
-    implementation "com.github.Deficuet:UnityKt:v0.0.1-beta.2.3"
-    implementation "com.esotericsoftware.spine:spine-libgdx:3.6.53.1"
+    implementation "com.github.Deficuet:UnityKt:v0.0.1-beta.3.1"
+    implementation "com.esotericsoftware.spine:spine-libgdx:3.8.99.1"
     def gdxVersion = '1.11.0'
     implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
     implementation "com.badlogicgames.gdx:gdx-backend-lwjgl:$gdxVersion"
@@ -39,8 +42,19 @@ dependencies {
     implementation "no.tornado:tornadofx:1.7.20"
     implementation "net.mamoe.yamlkt:yamlkt:0.12.0"
     implementation 'org.json:json:20230227'
-    implementation 'com.github.Deficuet:kotlinTools:0.0.1.1'
+    implementation 'com.github.Deficuet:JImageUtils:0.0.2'
     testImplementation 'org.jetbrains.kotlin:kotlin-test'
+}
+
+jar {
+    manifest {
+        attributes "Specification-Title": "Java Advanced Imaging Image I/O Tools"
+        attributes "Specification-Version": "1.1"
+        attributes "Specification-Vendor": "Sun Microsystems, Inc."
+        attributes "Implementation-Title": "com.sun.media.imageio"
+        attributes "Implementation-Version": "1.1"
+        attributes "Implementation-Vendor": "Sun Microsystems, Inc."
+    }
 }
 
 test {
