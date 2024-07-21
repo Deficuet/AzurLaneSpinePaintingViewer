@@ -3,19 +3,23 @@ package io.github.deficuet.alsv
 import com.badlogic.gdx.backends.lwjgl.LwjglApplication
 import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration
 import com.badlogic.gdx.graphics.Texture.TextureFilter
-import javafx.stage.Stage
+import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.event.EventTarget
+import javafx.geometry.Insets
 import javafx.geometry.Orientation
 import javafx.geometry.Pos
 import javafx.scene.Node
 import javafx.scene.control.*
-import javafx.scene.input.KeyEvent
 import javafx.scene.control.skin.TableColumnHeader
 import javafx.scene.input.InputEvent
+import javafx.scene.input.KeyEvent
 import javafx.scene.input.MouseEvent
+import javafx.scene.layout.VBox
+import javafx.stage.Stage
+import javafx.util.Callback
 import tornadofx.*
 import java.awt.Toolkit
 
@@ -24,8 +28,8 @@ class ALSpineViewerApp: App(ALSpineViewerUI::class) {
         if (!cacheFolder.exists()) cacheFolder.mkdir()
         with(stage) {
             isResizable = false
-            x = 128.0
-            y = 128.0
+            x = 120.0
+            y = 100.0
         }
         super.start(stage)
     }
@@ -63,10 +67,15 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
         }
     )
 
-    private val functions = BackendFunctions(this)
+    private val functions = Functions(this)
     val faceList = observableListOf<String>()
 
+    private var operationPanel: VBox by singleAssign()
+
+    private var assetSystemRootLabel: TextField by singleAssign()
     val taskNameStr = SimpleStringProperty("当前任务：空闲中")
+    val dependenciesList = observableListOf<String>()
+    var dependenciesColumn: TableColumn<String, String> by singleAssign()
     private val scaleLabel = SimpleStringProperty("1.00")
     private val zoomLabel = SimpleStringProperty("1.00")
     private val speedLabel = SimpleStringProperty("1.00")
@@ -84,180 +93,204 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
 
     override val root = vbox {
         hbox {
-            alignment = Pos.CENTER_LEFT
             vboxConstraints {
                 marginLeft = 16.0; marginTop = 16.0; marginRight = 16.0
             }
-            button("导入文件") {
-                minWidth = 80.0; minHeight = 30.0
+            alignment = Pos.CENTER_LEFT
+            label("素材目录：")
+            assetSystemRootLabel = textfield(
+                configs.assetSystemRoot.takeIf { it.isNotBlank() } ?: "无"
+            ) {
+                maxWidth = 158.0; minHeight = 24.0
+                isEditable = false
+            }
+            button("浏览") {
+                hboxConstraints { marginLeft = 8.0 }
                 action {
                     isDisable = true
-                    primaryStage.isAlwaysOnTop = false
-                    val f = functions.importFile()
-                    primaryStage.isAlwaysOnTop = keepOnTopCheckbox.isSelected
-                    if (f != null) {
-                        runAsync {
-                            functions.extractFile(f)
+                    Functions.importAssetSystemRoot()?.let {
+                        operationPanel.isDisable = false
+                        assetSystemRootLabel.text = configs.assetSystemRoot
+                    }
+                    isDisable = false
+                }
+            }
+        }
+        operationPanel = vbox {
+            vboxConstraints { margin = Insets(12.0, 16.0, 16.0, 16.0) }
+            isDisable = configs.assetSystemRoot.isEmpty()
+            hbox {
+                alignment = Pos.CENTER_LEFT
+                button("导入文件") {
+                    minWidth = 80.0; minHeight = 30.0
+                    action {
+                        isDisable = true
+                        primaryStage.isAlwaysOnTop = false
+                        val f = functions.importFile()
+                        primaryStage.isAlwaysOnTop = keepOnTopCheckbox.isSelected
+                        if (f != null) {
+                            runAsync {
+                                functions.extractFile(f)
+                                isDisable = false
+                            }
+                        } else {
                             isDisable = false
                         }
-                    } else {
-                        isDisable = false
+                    }
+                }
+                taskNameLabel = label(taskNameStr) {
+                    hboxConstraints {
+                        marginLeft = 12.0
                     }
                 }
             }
-            taskNameLabel = label(taskNameStr) {
-                hboxConstraints {
-                    marginLeft = 12.0
+            tableview(dependenciesList) {
+                vboxConstraints { marginTop = 16.0 }
+                maxWidth = 266.0
+                maxHeight = 130.0
+                selectionModel = null
+                dependenciesColumn = column("依赖项", String::class) {
+                    minWidth = 250.0; maxWidth = 250.0; isSortable = false
+                    cellValueFactory = Callback { SimpleObjectProperty(it.value) }
                 }
+            }.also { controls.add(it) }
+            separator {
+                vboxConstraints { marginTop = 12.0 }
             }
-        }
-        hbox {
-            alignment = Pos.CENTER_LEFT
-            vboxConstraints {
-                marginTop = 12.0; marginLeft = 16.0; marginRight = 16.0
-            }
-            label("缩放：")
-            label(zoomLabel)
-            zoomSlider = slider(0.01, 10.0, 1.0, Orientation.HORIZONTAL) {
-                minWidth = 150.0
-                hboxConstraints { marginLeft = 8.0 }
-                addEventFilter(KeyEvent.ANY, Event::consume)
-                valueProperty().addListener { _, _, new ->
-                    zoomLabel.value = "%.2f".format(new).slice(0..3)
-                    window.camera.zoom = 1 / new.toFloat()
+            hbox {
+                alignment = Pos.CENTER_LEFT
+                vboxConstraints { marginTop = 8.0 }
+                label("缩放：")
+                label(zoomLabel)
+                zoomSlider = slider(0.01, 10.0, 1.0, Orientation.HORIZONTAL) {
+                    minWidth = 150.0
+                    hboxConstraints { marginLeft = 8.0 }
+                    addEventFilter(KeyEvent.ANY, Event::consume)
+                    valueProperty().addListener { _, _, new ->
+                        zoomLabel.value = "%.2f".format(new).slice(0..3)
+                        window.camera.zoom = 1 / new.toFloat()
+                    }
                 }
-            }
-            button("重置") {
-                hboxConstraints { marginLeft = 8.0 }
-                action {
-                    window.resetCamera()
-                    val x = window.camera.position.x
-                    zoomSlider.value = 1.0
-                    window.camera.position.x = x
-                }
-            }
-        }
-        hbox {
-            alignment = Pos.CENTER_LEFT
-            vboxConstraints {
-                marginTop = 12.0; marginLeft = 16.0
-            }
-            label("比例：")
-            label(scaleLabel)
-            scaleSlider = slider(0.1, 3.0, 1.0, Orientation.HORIZONTAL) {
-                minWidth = 150.0
-                hboxConstraints { marginLeft = 8.0 }
-                addEventFilter(KeyEvent.ANY, Event::consume)
-                valueProperty().addListener { _, _, new ->
-                    scaleLabel.value = "%.2f".format(new)
-                }
-                onMouseReleased = EventHandler {
-                    windowApp.postRunnable {
-                        window.loadSkeleton()
+                button("重置") {
+                    hboxConstraints { marginLeft = 8.0 }
+                    action {
+                        window.resetCamera()
+                        val x = window.camera.position.x
+                        zoomSlider.value = 1.0
+                        window.camera.position.x = x
                     }
                 }
             }
-            button("重置") {
-                hboxConstraints { marginLeft = 8.0 }
-                action {
-                    scaleSlider.value = 1.0
-                    window.resetCamera()
-                    windowApp.postRunnable {
-                        window.loadSkeleton()
+            hbox {
+                alignment = Pos.CENTER_LEFT
+                vboxConstraints { marginTop = 12.0 }
+                label("比例：")
+                label(scaleLabel)
+                scaleSlider = slider(0.1, 3.0, 1.0, Orientation.HORIZONTAL) {
+                    minWidth = 150.0
+                    hboxConstraints { marginLeft = 8.0 }
+                    addEventFilter(KeyEvent.ANY, Event::consume)
+                    valueProperty().addListener { _, _, new ->
+                        scaleLabel.value = "%.2f".format(new)
                     }
-                }
-            }
-            isDisable = true
-        }.also { controls.add(it) }
-        hbox {
-            alignment = Pos.CENTER_LEFT
-            vboxConstraints {
-                marginTop = 12.0; marginLeft = 16.0
-            }
-            label("速度：")
-            label(speedLabel)
-            speedSlider = slider(0.0, 3.0, 1.0, Orientation.HORIZONTAL) {
-                minWidth = 150.0
-                hboxConstraints { marginLeft = 8.0 }
-                addEventFilter(KeyEvent.ANY, Event::consume)
-                valueProperty().addListener { _, _, new ->
-                    speedLabel.value = "%.2f".format(new)
-                }
-            }
-            button("重置") {
-                hboxConstraints { marginLeft = 8.0 }
-                action { speedSlider.value = 1.0 }
-            }
-            isDisable = true
-        }.also { controls.add(it) }
-        hbox {
-            vboxConstraints {
-                marginLeft = 16.0; marginTop = 12.0
-            }
-            label("材质渲染：")
-            checkbox("线性过滤") {
-                isSelected = true
-                action {
-                    windowApp.postRunnable {
-                        val filter = if (isSelected) TextureFilter.Linear else TextureFilter.Nearest
-                        window.animGroupList.forEach { group ->
-                            group.atlas.textures.forEach { tex ->
-                                tex.setFilter(filter, filter)
-                            }
+                    onMouseReleased = EventHandler {
+                        windowApp.postRunnable {
+                            window.loadSkeleton()
                         }
                     }
                 }
-            }
-            isDisable = true
-        }.also { controls.add(it) }
-        hbox {
-            alignment = Pos.CENTER_LEFT
-            vboxConstraints {
-                marginTop = 12.0; marginLeft = 16.0
-            }
-            label("其他设置：")
-            vbox {
-                hbox {
-                    keepOnTopCheckbox = checkbox("窗口置顶") {
-                        action {
-                            primaryStage.isAlwaysOnTop = isSelected
+                button("重置") {
+                    hboxConstraints { marginLeft = 8.0 }
+                    action {
+                        scaleSlider.value = 1.0
+                        window.resetCamera()
+                        windowApp.postRunnable {
+                            window.loadSkeleton()
                         }
                     }
-                    loopCheckbox = checkbox("循环") {
-                        isSelected = true
-                        hboxConstraints { marginLeft = 16.0 }
-                        action {
-                            windowApp.postRunnable {
-                                window.animGroupList.forEach {
-                                    it.state.setAnimation(0, it.anim, isSelected)
+                }
+                isDisable = true
+            }.also { controls.add(it) }
+            hbox {
+                alignment = Pos.CENTER_LEFT
+                vboxConstraints { marginTop = 12.0 }
+                label("速度：")
+                label(speedLabel)
+                speedSlider = slider(0.0, 3.0, 1.0, Orientation.HORIZONTAL) {
+                    minWidth = 150.0
+                    hboxConstraints { marginLeft = 8.0 }
+                    addEventFilter(KeyEvent.ANY, Event::consume)
+                    valueProperty().addListener { _, _, new ->
+                        speedLabel.value = "%.2f".format(new)
+                    }
+                }
+                button("重置") {
+                    hboxConstraints { marginLeft = 8.0 }
+                    action { speedSlider.value = 1.0 }
+                }
+                isDisable = true
+            }.also { controls.add(it) }
+            hbox {
+                vboxConstraints { marginTop = 12.0 }
+                label("材质渲染：")
+                checkbox("线性过滤") {
+                    isSelected = true
+                    action {
+                        windowApp.postRunnable {
+                            val filter = if (isSelected) TextureFilter.Linear else TextureFilter.Nearest
+                            window.animGroupList.forEach { group ->
+                                group.atlas.textures.forEach { tex ->
+                                    tex.setFilter(filter, filter)
                                 }
                             }
                         }
                     }
                 }
-                hbox {
-                    vboxConstraints {
-                        marginTop = 12.0
+                isDisable = true
+            }.also { controls.add(it) }
+            hbox {
+                alignment = Pos.CENTER_LEFT
+                vboxConstraints { marginTop = 12.0 }
+                label("其他设置：")
+                vbox {
+                    hbox {
+                        keepOnTopCheckbox = checkbox("窗口置顶") {
+                            action {
+                                primaryStage.isAlwaysOnTop = isSelected
+                            }
+                        }
+                        loopCheckbox = checkbox("循环") {
+                            isSelected = true
+                            hboxConstraints { marginLeft = 16.0 }
+                            action {
+                                windowApp.postRunnable {
+                                    window.animGroupList.forEach {
+                                        it.state.setAnimation(0, it.anim, isSelected)
+                                    }
+                                }
+                            }
+                        }
                     }
-                    drawAxisCheckbox = checkbox("显示坐标轴") {
-                        isSelected = true
+                    hbox {
+                        vboxConstraints {
+                            marginTop = 12.0
+                        }
+                        drawAxisCheckbox = checkbox("显示坐标轴") {
+                            isSelected = true
+                        }
                     }
                 }
+                isDisable = true
+            }.also { controls.add(it) }
+            separator {
+                vboxConstraints { marginTop = 12.0 }
             }
-            isDisable = true
-        }.also { controls.add(it) }
-        separator {
-            vboxConstraints { marginTop = 12.0; marginLeft = 16.0; marginRight = 16.0 }
-        }
-        hbox {
-            vboxConstraints {
-                marginTop = 12.0; marginLeft = 16.0
-                marginRight = 16.0; marginBottom = 16.0
+            label("差分表情：") {
+                vboxConstraints { marginTop = 8.0 }
             }
-            label("差分：")
             faceListView = listview(faceList) {
-                hboxConstraints { marginLeft = 16.0; marginRight = 0.0 }
-                maxHeight = 144.0; maxWidth = 216.0
+                vboxConstraints { marginTop = 12.0 }
+                maxHeight = 144.0; maxWidth = 266.0
                 onUserSelectModified(clickCount = 1) { item ->
                     if (item != lastSelection) {
                         windowApp.postRunnable {
@@ -269,9 +302,9 @@ class ALSpineViewerUI: View("碧蓝动态立绘浏览器") {
                     }
                 }
                 addEventFilter(KeyEvent.KEY_PRESSED) { it.consume() }
-            }
-            isDisable = true
-        }.also { controls.add(it) }
+                isDisable = true
+            }.also { controls.add(it) }
+        }
     }
 }
 
@@ -307,4 +340,5 @@ fun <T> ListView<T>.onUserSelectModified(clickCount: Int, action: (T) -> Unit) {
 
 fun main() {
     launch<ALSpineViewerApp>()
+//    println(dependencies["spinepainting/naximofu"])
 }

@@ -111,10 +111,10 @@ class ALSpineViewerWindow(
                 )
             }
             if (anim.size > 1) {
-                Platform.runLater {
-                    ui.faceList.clear()
-                    ui.faceList.addAll(anim.map { it.name })
-                    ui.faceListView.selectionModel.select(pair.startingAnimName)
+                runBlockingFX(ui) {
+                    faceList.clear()
+                    faceList.addAll(anim.map { it.name })
+                    faceListView.selectionModel.select(pair.startingAnimName)
                 }
                 mainAnimState = animState
             }
@@ -128,7 +128,7 @@ class ALSpineViewerWindow(
     }
 
     override fun render() {
-        Gdx.gl.glClearColor(0.56f, 0.56f, 0.56f, 1f)
+        Gdx.gl.glClearColor(0.80f, 0.80f, 0.80f, 1f)
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
         val delta = minOf(
             Gdx.graphics.deltaTime, 0.033f
